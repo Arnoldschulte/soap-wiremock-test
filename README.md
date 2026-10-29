@@ -4,7 +4,8 @@ Basisopzet om SOAP-responses te simuleren met **WireMock**, op basis van Java-kl
 
 - Responses worden in Java opgebouwd met de gegenereerde klassen, dus typeveilig en met code completion in IntelliJ.
 - Elke response wordt bij het opbouwen **gevalideerd tegen de XSD's**. Een mock die niet aan het contract voldoet, faalt direct.
-- Er zijn twee manieren om de mocks te gebruiken:
+- Met de **StubGenerator** maak je uit je eigen (privé) WSDL en XSD's `mappings`, `__files` en een Dockerfile voor een aparte stub-repo.
+- Er zijn twee manieren om de mocks van het voorbeeld te gebruiken:
   - **Java-stubs** voor JUnit-tests en als lokale mockserver.
   - **`wiremock/`-map** met `mappings` en `__files` plus een Dockerfile, voor een mock-image in een testomgeving. Een test laadt die map in WireMock en valideert alle response-bestanden tegen de XSD's.
 
@@ -17,6 +18,7 @@ Basisopzet om SOAP-responses te simuleren met **WireMock**, op basis van Java-kl
 ## Projectstructuur
 
 ```
+src/main/resources/wsdl/CustomerService.wsdl   voorbeeld-WSDL voor de StubGenerator
 src/main/resources/xsd/
 ├── common.xsd          gedeelde typen (Address, ErrorDetail)
 ├── customer.xsd        berichten van de CustomerService, importeert common.xsd
@@ -27,7 +29,8 @@ src/main/java/nl/example/soapwiremock/
 ├── stubs/CustomerServiceStubs.java     WireMock-stubs per scenario
 ├── SampleData.java                     testdata met de gegenereerde klassen
 ├── MockServerApp.java                  start een lokale mockserver
-└── ExportMappings.java                 schrijft de stubs weg als JSON-mappings
+├── ExportMappings.java                 schrijft de stubs weg als JSON-mappings
+└── generator/StubGenerator.java        WSDL + XSD's → mappings, __files en Dockerfile
 
 src/test/java/...                       JUnit 5-tests (Java-stubs én de wiremock/-map)
 wiremock/
@@ -36,6 +39,7 @@ wiremock/
 └── __files/customer/*.xml              SOAP-responses
 requests/GetCustomerRequest.xml         voorbeeldrequest voor curl / SoapUI / Postman
 
+local/                                  jouw eigen WSDL's/XSD's (staat in .gitignore)
 target/generated-sources/xjc/           gegenereerde JAXB-klassen (niet in git)
 ```
 
@@ -145,6 +149,69 @@ docker run -it --rm -p 8080:8080 \
   -v "$PWD/target/wiremock:/home/wiremock" \
   wiremock/wiremock:3.13.1 --verbose
 ```
+
+## Stubs genereren uit je eigen WSDL (lokaal en privé)
+
+Met de `StubGenerator` maak je uit een WSDL en de bijbehorende XSD's een complete map met `mappings`, `__files` en een `Dockerfile`. Die map zet je in een aparte (interne) stub-repo.
+
+**Je WSDL en XSD's blijven privé.**
+- De generator leest ze alleen vanaf het pad dat je opgeeft. Er wordt niets gedownload of verstuurd.
+- Zet ze in de map `local/`. Die staat in `.gitignore`, dus de bestanden komen nooit in deze repo.
+- Een map buiten de repo werkt ook.
+
+### Gebruik
+
+```
+local/
+└── mijn-service/
+    ├── MijnService.wsdl
+    └── xsd/...            # met dezelfde relatieve paden als in de WSDL
+```
+
+```bash
+mvn compile exec:java@generate-stubs -Dwsdl=local/mijn-service/MijnService.wsdl -Dout=../mijn-stubs-repo
+```
+
+| Optie | Standaard | Betekenis |
+|---|---|---|
+| `-Dwsdl` | (verplicht) | WSDL 1.1-bestand; XSD's worden relatief vanaf de WSDL gezocht |
+| `-Dout` | `target/stubs` | doelmap, bijv. je stub-repo |
+| `-Doverwrite` | `false` | bestaande bestanden overschrijven |
+| `-Dimage` | `wiremock/wiremock:3.13.1` | standaard base image in de Dockerfile, bijv. die uit je interne registry |
+
+### Wat er wordt gegenereerd
+
+```
+mijn-stubs-repo/
+├── Dockerfile
+├── README.md
+├── mappings/<Service>/<Operatie>.json            # default-response, priority 10
+├── mappings/<Service>/<Operatie>_<Fault>.json    # fault, priority 1, alleen met header X-Mock-Fault: <Fault>
+└── __files/<Service>/<Operatie>Response.xml, <Operatie>_<Fault>.xml
+```
+
+Wat de generator per operatie doet:
+- **Gegevens uit de WSDL.** Endpoint (`soap:address`), `SOAPAction` (bij SOAP 1.2 de `action` in de `Content-Type`) en het request-element worden uit de WSDL gehaald en gebruikt voor de matching.
+- **Voorbeeldberichten uit de XSD's.** Response- en fault-berichten worden met XMLBeans gemaakt, op dezelfde manier als `xsd2inst`. De output is deterministisch, dus opnieuw genereren geeft dezelfde bestanden.
+- **Validatie.** Elk voorbeeldbericht wordt tegen de XSD's gevalideerd. Velden met een patroon, zoals een postcode, krijgen soms een ongeldige voorbeeldwaarde. Die verschijnen als **waarschuwing** in de uitvoer, zodat je weet welke waarden je moet aanpassen.
+- **Bestaande bestanden blijven staan.** Wat je in de stub-repo met de hand hebt aangepast, wordt bij opnieuw genereren niet overschreven, tenzij je `-Doverwrite=true` meegeeft. Nieuwe operaties worden wel toegevoegd.
+
+### Werkwijze
+
+1. Genereer de stubs in je stub-repo.
+2. Vervang de voorbeeldwaarden in `__files` door realistische testdata.
+3. Voeg eventueel scenario's toe: kopieer een mapping, geef hem priority 5 en een extra `bodyPatterns`-regel. Zie de gegenereerde README.
+4. Commit de stub-repo en bouw het image:
+   ```bash
+   docker build --build-arg WIREMOCK_IMAGE=<interne registry>/wiremock/wiremock:<versie> -t mijn-stubs .
+   ```
+
+### Beperkingen
+
+- **Alleen WSDL 1.1 met document/literal.** Operaties in RPC-stijl worden overgeslagen, met een waarschuwing.
+- **Geen `<wsdl:import>`.** Voeg geïmporteerde WSDL's eerst samen tot één bestand.
+- **Alleen lokale XSD's.** Een `schemaLocation` met `http(s)://` wordt niet gedownload. Sla zo'n XSD lokaal op en verwijs er relatief naar.
+- **Draaien binnen een intern netwerk.** Maven moet de dependencies kunnen ophalen, bijvoorbeeld via een interne Nexus- of Artifactory-mirror in `~/.m2/settings.xml`.
 
 ## Eigen XSD's toevoegen
 

@@ -28,6 +28,23 @@
         </xs:complexType>
     </xs:element>
 
+    <!-- Operatie: UpdateCustomer -->
+    <xs:element name="UpdateCustomerRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="customer" type="cus:Customer"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="UpdateCustomerResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="updated" type="xs:boolean"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
     <xs:complexType name="Customer">
         <xs:sequence>
             <xs:element name="customerId" type="xs:string"/>

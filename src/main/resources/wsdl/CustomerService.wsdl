@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Fictieve voorbeeld-WSDL voor de StubGenerator.
+    De typen komen uit ../xsd/customer.xsd, die op zijn beurt common.xsd importeert.
+-->
+<wsdl:definitions name="CustomerService"
+                  targetNamespace="http://example.com/customer/v1/wsdl"
+                  xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/"
+                  xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/"
+                  xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+                  xmlns:tns="http://example.com/customer/v1/wsdl"
+                  xmlns:cus="http://example.com/customer/v1"
+                  xmlns:com="http://example.com/common/v1">
+
+    <wsdl:types>
+        <xsd:schema targetNamespace="http://example.com/customer/v1/wsdl">
+            <xsd:import namespace="http://example.com/customer/v1" schemaLocation="../xsd/customer.xsd"/>
+            <xsd:import namespace="http://example.com/common/v1" schemaLocation="../xsd/common.xsd"/>
+        </xsd:schema>
+    </wsdl:types>
+
+    <wsdl:message name="GetCustomerRequest">
+        <wsdl:part name="parameters" element="cus:GetCustomerRequest"/>
+    </wsdl:message>
+    <wsdl:message name="GetCustomerResponse">
+        <wsdl:part name="parameters" element="cus:GetCustomerResponse"/>
+    </wsdl:message>
+    <wsdl:message name="UpdateCustomerRequest">
+        <wsdl:part name="parameters" element="cus:UpdateCustomerRequest"/>
+    </wsdl:message>
+    <wsdl:message name="UpdateCustomerResponse">
+        <wsdl:part name="parameters" element="cus:UpdateCustomerResponse"/>
+    </wsdl:message>
+    <wsdl:message name="CustomerFault">
+        <wsdl:part name="fault" element="com:ErrorDetail"/>
+    </wsdl:message>
+
+    <wsdl:portType name="CustomerPortType">
+        <wsdl:operation name="GetCustomer">
+            <wsdl:input message="tns:GetCustomerRequest"/>
+            <wsdl:output message="tns:GetCustomerResponse"/>
+            <wsdl:fault name="CustomerNotFound" message="tns:CustomerFault"/>
+        </wsdl:operation>
+        <wsdl:operation name="UpdateCustomer">
+            <wsdl:input message="tns:UpdateCustomerRequest"/>
+            <wsdl:output message="tns:UpdateCustomerResponse"/>
+            <wsdl:fault name="CustomerNotFound" message="tns:CustomerFault"/>
+        </wsdl:operation>
+    </wsdl:portType>
+
+    <wsdl:binding name="CustomerSoapBinding" type="tns:CustomerPortType">
+        <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+        <wsdl:operation name="GetCustomer">
+            <soap:operation soapAction="http://example.com/customer/v1/GetCustomer"/>
+            <wsdl:input><soap:body use="literal"/></wsdl:input>
+            <wsdl:output><soap:body use="literal"/></wsdl:output>
+            <wsdl:fault name="CustomerNotFound"><soap:fault name="CustomerNotFound" use="literal"/></wsdl:fault>
+        </wsdl:operation>
+        <wsdl:operation name="UpdateCustomer">
+            <soap:operation soapAction="http://example.com/customer/v1/UpdateCustomer"/>
+            <wsdl:input><soap:body use="literal"/></wsdl:input>
+            <wsdl:output><soap:body use="literal"/></wsdl:output>
+            <wsdl:fault name="CustomerNotFound"><soap:fault name="CustomerNotFound" use="literal"/></wsdl:fault>
+        </wsdl:operation>
+    </wsdl:binding>
+
+    <wsdl:service name="CustomerService">
+        <wsdl:port name="CustomerPort" binding="tns:CustomerSoapBinding">
+            <soap:address location="http://localhost:8080/ws/customer"/>
+        </wsdl:port>
+    </wsdl:service>
+
+</wsdl:definitions>

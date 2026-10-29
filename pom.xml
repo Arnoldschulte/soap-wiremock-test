@@ -23,6 +23,14 @@
         <junit.version>5.11.4</junit.version>
         <assertj.version>3.26.3</assertj.version>
         <slf4j.version>2.0.16</slf4j.version>
+        <xmlbeans.version>5.3.0</xmlbeans.version>
+        <log4j.version>2.24.3</log4j.version>
+
+        <!-- Instellingen voor de stub-generator (mvn compile exec:java@generate-stubs -Dwsdl=...) -->
+        <wsdl></wsdl>
+        <out>target/stubs</out>
+        <overwrite>false</overwrite>
+        <image>wiremock/wiremock:3.13.1</image>
     </properties>
 
     <dependencyManagement>
@@ -55,6 +63,20 @@
             <groupId>org.wiremock</groupId>
             <artifactId>wiremock-standalone</artifactId>
             <version>${wiremock.version}</version>
+        </dependency>
+
+        <!-- XMLBeans: compileert XSD's tijdens runtime en maakt voorbeeldberichten (zoals xsd2inst) -->
+        <dependency>
+            <groupId>org.apache.xmlbeans</groupId>
+            <artifactId>xmlbeans</artifactId>
+            <version>${xmlbeans.version}</version>
+        </dependency>
+        <!-- XMLBeans logt via log4j-api; stuur dat door naar slf4j -->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-to-slf4j</artifactId>
+            <version>${log4j.version}</version>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -122,7 +144,10 @@
                 <version>3.5.2</version>
             </plugin>
 
-            <!-- mvn compile exec:java  -> start de mockserver lokaal -->
+            <!--
+                mvn compile exec:java                                  -> start de mockserver lokaal
+                mvn compile exec:java@generate-stubs -Dwsdl=... -Dout=... -> genereer mappings + __files uit een WSDL
+            -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
@@ -130,6 +155,23 @@
                 <configuration>
                     <mainClass>nl.example.soapwiremock.MockServerApp</mainClass>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>generate-stubs</id>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                        <configuration>
+                            <mainClass>nl.example.soapwiremock.generator.StubGenerator</mainClass>
+                            <arguments>
+                                <argument>--wsdl=${wsdl}</argument>
+                                <argument>--out=${out}</argument>
+                                <argument>--overwrite=${overwrite}</argument>
+                                <argument>--image=${image}</argument>
+                            </arguments>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

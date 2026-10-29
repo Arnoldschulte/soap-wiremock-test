@@ -14,3 +14,6 @@ out/
 # OS
 .DS_Store
 Thumbs.db
+
+# Eigen (privé) WSDL's/XSD's en gegenereerde stubs: nooit committen
+local/
