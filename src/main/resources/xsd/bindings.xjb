@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Bepaalt per XSD in welk Java-package de gegenereerde klassen komen.
+    Voeg hier een blok toe voor elke nieuwe XSD.
+-->
+<jaxb:bindings version="3.0"
+               xmlns:jaxb="https://jakarta.ee/xml/ns/jaxb"
+               xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+    <jaxb:bindings schemaLocation="common.xsd" node="/xs:schema">
+        <jaxb:schemaBindings>
+            <jaxb:package name="nl.example.soapwiremock.generated.common"/>
+        </jaxb:schemaBindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings schemaLocation="customer.xsd" node="/xs:schema">
+        <jaxb:schemaBindings>
+            <jaxb:package name="nl.example.soapwiremock.generated.customer"/>
+        </jaxb:schemaBindings>
+    </jaxb:bindings>
+
+</jaxb:bindings>

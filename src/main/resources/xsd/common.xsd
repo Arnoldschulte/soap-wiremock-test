@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Gedeelde typen die door meerdere service-XSD's worden geïmporteerd.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:com="http://example.com/common/v1"
+           targetNamespace="http://example.com/common/v1"
+           elementFormDefault="qualified">
+
+    <xs:complexType name="Address">
+        <xs:sequence>
+            <xs:element name="street" type="xs:string"/>
+            <xs:element name="houseNumber" type="xs:string"/>
+            <xs:element name="postalCode" type="com:PostalCode"/>
+            <xs:element name="city" type="xs:string"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Nederlandse postcode, bijv. 3511AB -->
+    <xs:simpleType name="PostalCode">
+        <xs:restriction base="xs:string">
+            <xs:pattern value="[1-9][0-9]{3}\s?[A-Z]{2}"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+    <!-- Wordt gebruikt in het <detail>-blok van een SOAP Fault -->
+    <xs:element name="ErrorDetail">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="code" type="xs:string"/>
+                <xs:element name="message" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Berichten van de (fictieve) CustomerService.
+    Importeert common.xsd voor gedeelde typen zoals Address en ErrorDetail.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:cus="http://example.com/customer/v1"
+           xmlns:com="http://example.com/common/v1"
+           targetNamespace="http://example.com/customer/v1"
+           elementFormDefault="qualified">
+
+    <xs:import namespace="http://example.com/common/v1" schemaLocation="common.xsd"/>
+
+    <!-- Operatie: GetCustomer -->
+    <xs:element name="GetCustomerRequest">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="customerId" type="xs:string"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:element name="GetCustomerResponse">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="customer" type="cus:Customer"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="Customer">
+        <xs:sequence>
+            <xs:element name="customerId" type="xs:string"/>
+            <xs:element name="firstName" type="xs:string"/>
+            <xs:element name="lastName" type="xs:string"/>
+            <xs:element name="email" type="xs:string" minOccurs="0"/>
+            <xs:element name="status" type="cus:CustomerStatus"/>
+            <xs:element name="address" type="com:Address"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:simpleType name="CustomerStatus">
+        <xs:restriction base="xs:string">
+            <xs:enumeration value="ACTIVE"/>
+            <xs:enumeration value="INACTIVE"/>
+        </xs:restriction>
+    </xs:simpleType>
+
+</xs:schema>

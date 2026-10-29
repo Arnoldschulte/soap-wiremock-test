@@ -1,0 +1,10 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:cus="http://example.com/customer/v1">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <cus:GetCustomerRequest>
+      <!-- 12345 = bekende klant, 99999 = SOAP Fault, al het andere = fallback -->
+      <cus:customerId>12345</cus:customerId>
+    </cus:GetCustomerRequest>
+  </soapenv:Body>
+</soapenv:Envelope>
