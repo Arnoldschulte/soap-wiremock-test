@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  maven:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,3 +17,33 @@ jobs:
           cache: maven
       - name: Build en tests
         run: mvn -B verify
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Image bouwen
+        run: docker build -t customer-soap-mock wiremock/
+      - name: Container starten
+        run: |
+          docker run -d --name mock -p 8080:8080 customer-soap-mock
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8080/__admin/mappings > /dev/null && break
+            sleep 1
+          done
+      - name: Smoke test
+        run: |
+          set -e
+          call() {
+            curl -s -o body.xml -w "%{http_code}" -X POST http://localhost:8080/ws/customer \
+              -H "Content-Type: text/xml; charset=UTF-8" \
+              -H "SOAPAction: http://example.com/customer/v1/GetCustomer" \
+              -d "$(sed "s/12345/$1/" requests/GetCustomerRequest.xml)"
+          }
+          [ "$(call 12345)" = "200" ] && grep -q "Jansen" body.xml
+          [ "$(call 99999)" = "500" ] && grep -q "CUSTOMER_NOT_FOUND" body.xml
+          [ "$(call 55555)" = "200" ] && grep -q "<cus:customerId>55555</cus:customerId>" body.xml
+          echo "Alle scenario's werken"
+      - name: Logs bij falen
+        if: failure()
+        run: docker logs mock

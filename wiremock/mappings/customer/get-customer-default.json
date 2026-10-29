@@ -1,0 +1,27 @@
+{
+  "name": "GetCustomer - fallback, neemt customerId over uit het request",
+  "priority": 10,
+  "request": {
+    "method": "POST",
+    "urlPath": "/ws/customer",
+    "headers": {
+      "SOAPAction": { "contains": "GetCustomer" }
+    },
+    "bodyPatterns": [
+      {
+        "matchesXPath": "//cus:GetCustomerRequest",
+        "xPathNamespaces": {
+          "cus": "http://example.com/customer/v1"
+        }
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "headers": {
+      "Content-Type": "text/xml; charset=UTF-8"
+    },
+    "bodyFileName": "customer/GetCustomerResponse_default.xml",
+    "transformers": ["response-template"]
+  }
+}

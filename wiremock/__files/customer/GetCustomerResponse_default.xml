@@ -1,0 +1,21 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:cus="http://example.com/customer/v1"
+                  xmlns:com="http://example.com/common/v1">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <cus:GetCustomerResponse>
+      <cus:customer>
+        <cus:customerId>{{xPath request.body '//*[local-name()="customerId"]/text()'}}</cus:customerId>
+        <cus:firstName>Test</cus:firstName>
+        <cus:lastName>Klant</cus:lastName>
+        <cus:status>ACTIVE</cus:status>
+        <cus:address>
+          <com:street>Teststraat</com:street>
+          <com:houseNumber>99</com:houseNumber>
+          <com:postalCode>1000AA</com:postalCode>
+          <com:city>Amsterdam</com:city>
+        </cus:address>
+      </cus:customer>
+    </cus:GetCustomerResponse>
+  </soapenv:Body>
+</soapenv:Envelope>

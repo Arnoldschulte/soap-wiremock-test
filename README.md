@@ -4,7 +4,9 @@ Basisopzet om SOAP-responses te simuleren met **WireMock**, op basis van Java-kl
 
 - Responses worden in Java opgebouwd met de gegenereerde klassen, dus typeveilig en met code completion in IntelliJ.
 - Elke response wordt bij het opbouwen **gevalideerd tegen de XSD's**. Een mock die niet aan het contract voldoet, faalt direct.
-- De stubs zijn te gebruiken in JUnit-tests, als lokale mockserver en, na export, als JSON-mappings voor WireMock standalone of Docker.
+- Er zijn twee manieren om de mocks te gebruiken:
+  - **Java-stubs** voor JUnit-tests en als lokale mockserver.
+  - **`wiremock/`-map** met `mappings` en `__files` plus een Dockerfile, voor een mock-image in een testomgeving. Een test laadt die map in WireMock en valideert alle response-bestanden tegen de XSD's.
 
 ## Vereisten
 
@@ -27,7 +29,11 @@ src/main/java/nl/example/soapwiremock/
 ├── MockServerApp.java                  start een lokale mockserver
 └── ExportMappings.java                 schrijft de stubs weg als JSON-mappings
 
-src/test/java/...                       JUnit 5-tests met @WireMockTest
+src/test/java/...                       JUnit 5-tests (Java-stubs én de wiremock/-map)
+wiremock/
+├── Dockerfile                          image op basis van wiremock/wiremock
+├── mappings/customer/*.json            request-matching per scenario
+└── __files/customer/*.xml              SOAP-responses
 requests/GetCustomerRequest.xml         voorbeeldrequest voor curl / SoapUI / Postman
 
 target/generated-sources/xjc/           gegenereerde JAXB-klassen (niet in git)
@@ -80,9 +86,53 @@ curl -X POST http://localhost:8080/ws/customer \
 
 Geladen mappings bekijken: <http://localhost:8080/__admin/mappings>
 
+## Docker-image met mappings en `__files`
+
+De map `wiremock/` volgt de standaardindeling van WireMock. De `Dockerfile` kopieert die map in het image:
+
+```dockerfile
+ARG WIREMOCK_IMAGE=wiremock/wiremock:3.13.1
+FROM ${WIREMOCK_IMAGE}
+
+COPY mappings /home/wiremock/mappings
+COPY __files /home/wiremock/__files
+
+CMD ["--global-response-templating", "--verbose"]
+```
+
+Bouwen en draaien:
+
+```bash
+docker build -t customer-soap-mock wiremock/
+docker run --rm -p 8080:8080 customer-soap-mock
+```
+
+Een image uit een interne registry gebruik je via een build-argument:
+
+```bash
+docker build -t customer-soap-mock \
+  --build-arg WIREMOCK_IMAGE=registry.example.nl/wiremock/wiremock:2.32.0 wiremock/
+```
+
+### Waarom `--global-response-templating`?
+
+In **WireMock 2.x** staat response templating standaard uit. Zonder deze vlag komt `{{xPath ...}}` letterlijk in de response terecht. De vlag werkt in zowel 2.x als 3.x.
+
+Met de vlag aan wordt elke response als template behandeld. Gebruik in een XML-bestand dus alleen `{{` als je echt een template bedoelt.
+
+### Werkwijze voor een nieuw scenario
+
+1. Maak een response in `wiremock/__files/<service>/`. Een goed startpunt is een bericht dat je met de Java-code genereert via `SoapMessages.envelope(...)`. Dan weet je zeker dat het klopt met de XSD's.
+2. Maak een mapping in `wiremock/mappings/<service>/` die met `bodyFileName` naar dat bestand verwijst.
+3. Draai `mvn verify`. `WiremockFolderTest` doet dan twee dingen:
+   - het valideert **elk** XML-bestand in `__files` tegen de XSD's (bij een Fault de inhoud van `<detail>`);
+   - het start WireMock met deze map en roept de scenario's aan.
+
+Let op: een template in een veld met een beperkt type (bijv. een postcode-patroon of een datum) is in het bestand zelf niet XSD-geldig. Gebruik templates daarom in `xs:string`-velden, of pas de validatietest aan voor zo'n bestand.
+
 ## Exporteren naar JSON-mappings
 
-Wil je de mocks zonder Java draaien, bijvoorbeeld in Docker in een testomgeving? Exporteer ze dan als JSON:
+Definieer je de mocks liever in Java, dan kun je ze ook als JSON exporteren. WireMock schrijft de bodies daarbij inline in de mapping, dus zonder `__files`:
 
 ```bash
 mvn compile exec:java -Dexec.mainClass=nl.example.soapwiremock.ExportMappings

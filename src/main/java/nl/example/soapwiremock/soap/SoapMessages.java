@@ -5,9 +5,17 @@ import jakarta.xml.bind.JAXBElement;
 import jakarta.xml.bind.JAXBException;
 import jakarta.xml.bind.Marshaller;
 import jakarta.xml.bind.Unmarshaller;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
 import javax.xml.XMLConstants;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.transform.dom.DOMSource;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
@@ -16,6 +24,7 @@ import javax.xml.transform.Source;
 import javax.xml.transform.stream.StreamSource;
 import javax.xml.validation.Schema;
 import javax.xml.validation.SchemaFactory;
+import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.net.URL;
@@ -114,7 +123,77 @@ public final class SoapMessages {
         return firstChildOf(soapXml, "detail", type);
     }
 
+    /**
+     * Valideert een kant-en-klaar SOAP-bericht (bijv. een bestand uit {@code __files}) tegen de XSD's.
+     * Gevalideerd wordt de payload in de {@code Body}, of bij een Fault de payload in {@code detail}.
+     * De envelope zelf valt buiten de XSD's en wordt alleen op welgevormdheid gecontroleerd.
+     *
+     * @throws SoapMessageException als het bericht niet welgevormd of niet schema-conform is
+     */
+    public void validate(String soapXml) {
+        if (schema == null) {
+            throw new IllegalStateException("Geen XSD's geconfigureerd; gebruik validatingAgainst(...)");
+        }
+        Element payload = payloadElement(parse(soapXml));
+        if (payload == null) {
+            return; // Fault zonder detail: niets om te valideren
+        }
+        try {
+            schema.newValidator().validate(new DOMSource(payload));
+        } catch (SAXException | IOException e) {
+            throw new SoapMessageException(
+                    "<" + payload.getLocalName() + "> is niet geldig volgens de XSD: " + e.getMessage(), e);
+        }
+    }
+
     // ------------------------------------------------------------------ intern
+
+    private static Document parse(String xml) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            factory.setXIncludeAware(false);
+            factory.setExpandEntityReferences(false);
+            return factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            throw new SoapMessageException("Bericht is geen welgevormde XML: " + e.getMessage(), e);
+        }
+    }
+
+    private static Element payloadElement(Document document) {
+        Element body = firstElementByLocalName(document.getDocumentElement(), "Body");
+        if (body == null) {
+            throw new SoapMessageException("Geen <Body> gevonden in bericht");
+        }
+        Element payload = firstChildElement(body);
+        if (payload == null) {
+            throw new SoapMessageException("<Body> is leeg");
+        }
+        if ("Fault".equals(payload.getLocalName())) {
+            // SOAP 1.1: <detail>, SOAP 1.2: <Detail>
+            Element detail = firstElementByLocalName(payload, "detail");
+            if (detail == null) {
+                detail = firstElementByLocalName(payload, "Detail");
+            }
+            return detail == null ? null : firstChildElement(detail);
+        }
+        return payload;
+    }
+
+    private static Element firstElementByLocalName(Element parent, String localName) {
+        NodeList nodes = parent.getElementsByTagNameNS("*", localName);
+        return nodes.getLength() == 0 ? null : (Element) nodes.item(0);
+    }
+
+    private static Element firstChildElement(Element parent) {
+        for (Node child = parent.getFirstChild(); child != null; child = child.getNextSibling()) {
+            if (child.getNodeType() == Node.ELEMENT_NODE) {
+                return (Element) child;
+            }
+        }
+        return null;
+    }
 
     private String marshal(Object payload) {
         try {

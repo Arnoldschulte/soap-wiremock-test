@@ -49,6 +49,36 @@ class SoapMessagesTest {
     }
 
     @Test
+    void validateKeurtHandgeschrevenBerichtMetFoutePostcodeAf() {
+        String xml = """
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                  xmlns:cus="http://example.com/customer/v1"
+                                  xmlns:com="http://example.com/common/v1">
+                  <soapenv:Body>
+                    <cus:GetCustomerResponse>
+                      <cus:customer>
+                        <cus:customerId>1</cus:customerId>
+                        <cus:firstName>A</cus:firstName>
+                        <cus:lastName>B</cus:lastName>
+                        <cus:status>ACTIVE</cus:status>
+                        <cus:address>
+                          <com:street>s</com:street>
+                          <com:houseNumber>1</com:houseNumber>
+                          <com:postalCode>ABC</com:postalCode>
+                          <com:city>c</com:city>
+                        </cus:address>
+                      </cus:customer>
+                    </cus:GetCustomerResponse>
+                  </soapenv:Body>
+                </soapenv:Envelope>
+                """;
+
+        assertThatThrownBy(() -> soap.validate(xml))
+                .isInstanceOf(SoapMessageException.class)
+                .hasMessageContaining("'ABC'");
+    }
+
+    @Test
     void zonderValidatieWordtOngeldigePayloadWelGemarshald() {
         Customer customer = SampleData.janJansen();
         customer.getAddress().setPostalCode("ABC");

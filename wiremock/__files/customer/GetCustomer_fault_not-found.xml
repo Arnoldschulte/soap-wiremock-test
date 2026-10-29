@@ -1,0 +1,15 @@
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                  xmlns:com="http://example.com/common/v1">
+  <soapenv:Body>
+    <soapenv:Fault>
+      <faultcode>soapenv:Client</faultcode>
+      <faultstring>Customer not found</faultstring>
+      <detail>
+        <com:ErrorDetail>
+          <com:code>CUSTOMER_NOT_FOUND</com:code>
+          <com:message>Klant 99999 bestaat niet</com:message>
+        </com:ErrorDetail>
+      </detail>
+    </soapenv:Fault>
+  </soapenv:Body>
+</soapenv:Envelope>
