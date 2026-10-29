@@ -56,5 +56,12 @@ public final class Report {
             warnings.forEach(w -> out.println("  ! " + w));
         }
         out.println();
+
+        // In GitHub Actions: waarschuwingen ook als annotatie tonen
+        if ("true".equals(System.getenv("GITHUB_ACTIONS"))) {
+            warnings.forEach(w -> out.println("::warning title=StubGenerator::" + w.replace("\n", " ")));
+            out.println("::notice title=StubGenerator::" + written.size() + " bestanden geschreven, "
+                    + skipped.size() + " overgeslagen, " + warnings.size() + " waarschuwingen");
+        }
     }
 }
