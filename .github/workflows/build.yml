@@ -17,6 +17,13 @@ jobs:
           cache: maven
       - name: Build en tests
         run: mvn -B verify
+      - name: Stubs genereren uit de voorbeeld-WSDL
+        run: mvn -B -q compile exec:java@generate-stubs -Dwsdl=src/main/resources/wsdl/CustomerService.wsdl -Dout=target/generated-stubs
+      - name: Gegenereerde stubs bewaren
+        uses: actions/upload-artifact@v7
+        with:
+          name: generated-stubs
+          path: target/generated-stubs
 
   docker:
     runs-on: ubuntu-latest
